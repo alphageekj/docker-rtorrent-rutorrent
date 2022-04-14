@@ -1,6 +1,15 @@
 #!/bin/sh
 set -e
 
+# do we have the BAD_WAN_IP?
+if [ "${BAD_WAN_IP}" != "" ]; then
+        WAN_IP=${WAN_IP:-$(dig +short myip.opendns.com @resolver1.opendns.com)}
+	WAN_IP=${WAN_IP:-$(curl ifconfig.me)}
+	if [ "${WAN_IP}" == "${BAD_WAN_IP}" ]; then
+	     exit 1
+	fi		
+fi
+
 # rTorrent
 curl --fail -d "<?xml version='1.0'?><methodCall><methodName>system.api_version</methodName></methodCall>" http://127.0.0.1:8001
 
