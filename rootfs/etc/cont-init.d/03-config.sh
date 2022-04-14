@@ -2,6 +2,17 @@
 
 WAN_IP=${WAN_IP:-$(dig +short myip.opendns.com @resolver1.opendns.com)}
 WAN_IP=${WAN_IP:-$(curl ifconfig.me)}
+
+# if BAD_WAN_IP is defined, then wait until VPN changes it to something else
+if [ "${BAD_WAN_IP}" != "" ]; then
+    # while the WAN_IP == BAD_WAN_IP, wait 2 seconds and re-check
+    while [ "${WAN_IP}" == "${BAD_WAN_IP}" ]; do
+	sleep 2
+	WAN_IP=${WAN_IP:-$(dig +short myip.opendns.com @resolver1.opendns.com)}
+	WAN_IP=${WAN_IP:-$(curl ifconfig.me)}
+    done
+fi
+
 printf "%s" "$WAN_IP" > /var/run/s6/container_environment/WAN_IP
 
 TZ=${TZ:-UTC}
@@ -107,6 +118,17 @@ echo "Update healthcheck script..."
 cat > /usr/local/bin/healthcheck <<EOL
 #!/bin/sh
 set -e
+
+# do we have the BAD_WAN_IP?
+if [ "${BAD_WAN_IP}" != "" ]; then
+	WAN_IP=${WAN_IP:-$(dig +short myip.opendns.com @resolver1.opendns.com)}
+	WAN_IP=${WAN_IP:-$(curl ifconfig.me)}
+    if [ "${WAN_IP}" == "${BAD_WAN_IP}" ]; then
+	exit 1
+    fi
+fi
+
+
 
 # rTorrent
 curl --fail -d "<?xml version='1.0'?><methodCall><methodName>system.api_version</methodName></methodCall>" http://127.0.0.1:${XMLRPC_HEALTH_PORT}
